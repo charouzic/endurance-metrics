@@ -1,0 +1,24 @@
+# Environment
+.venv/
+venv/
+env/
+
+# Data cache
+data/
+*.parquet
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Streamlit
+.streamlit/secrets.toml
