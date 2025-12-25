@@ -21,25 +21,71 @@ def calculate_weekly_stats(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
 
-    weekly = df.groupby("year_week").agg({
+    # Aggregate existing activity data by week
+    weekly = df.groupby("year_week", sort=False).agg({
         "distance_km": "sum",
         "elevation_m": "sum",
         "duration_min": "sum",
         "activity_id": "count",
-        "datetime": "min"  # Get earliest activity datetime in week
+        "week_start": "first"  # Get week start for sorting
     }).reset_index()
 
     weekly.columns = ["year_week", "total_distance_km", "total_elevation_m",
                       "total_duration_min", "activity_count", "week_start_date"]
 
-    # Extract year and week number for sorting
-    weekly["year"] = weekly["year_week"].str[:4].astype(int)
-    weekly["iso_week"] = weekly["year_week"].str[-2:].astype(int)
+    # Create complete date range for all weeks
+    min_date = df["week_start"].min()
+    max_date = df["week_start"].max()
 
-    # Sort chronologically
-    weekly = weekly.sort_values(["year", "iso_week"]).reset_index(drop=True)
+    # Remove timezone for date range generation
+    if hasattr(min_date, 'tz') and min_date.tz is not None:
+        min_date = min_date.tz_localize(None)
+    if hasattr(max_date, 'tz') and max_date.tz is not None:
+        max_date = max_date.tz_localize(None)
 
-    return weekly
+    # Generate all Monday dates in the range
+    all_mondays = pd.date_range(start=min_date, end=max_date, freq='W-MON')
+
+    # Create complete week labels for all weeks
+    complete_weeks = []
+    for monday in all_mondays:
+        # Convert back to timezone-aware to match original data
+        if df["week_start"].dtype.tz is not None:
+            monday_tz = pd.Timestamp(monday).tz_localize('UTC')
+        else:
+            monday_tz = monday
+
+        sunday = monday + pd.Timedelta(days=6)
+        week_label = (
+            monday.strftime("%Y-W%V") + " (" +
+            monday.strftime("%b %d") + " - " +
+            sunday.strftime("%b %d") + ")"
+        )
+        complete_weeks.append({
+            "year_week": week_label,
+            "week_start_date": monday_tz
+        })
+
+    complete_weeks_df = pd.DataFrame(complete_weeks)
+
+    # Merge with actual data, filling missing weeks with zeros
+    # Only merge on year_week, then use the week_start_date from complete_weeks
+    weekly_complete = complete_weeks_df.merge(
+        weekly[["year_week", "total_distance_km", "total_elevation_m", "total_duration_min", "activity_count"]],
+        on="year_week",
+        how="left"
+    )
+
+    # Fill NaN values with 0 for weeks with no activities
+    weekly_complete["total_distance_km"] = weekly_complete["total_distance_km"].fillna(0)
+    weekly_complete["total_elevation_m"] = weekly_complete["total_elevation_m"].fillna(0)
+    weekly_complete["total_duration_min"] = weekly_complete["total_duration_min"].fillna(0)
+    weekly_complete["activity_count"] = weekly_complete["activity_count"].fillna(0).astype(int)
+
+    # Sort chronologically by week start date
+    weekly_complete = weekly_complete.sort_values("week_start_date").reset_index(drop=True)
+
+    return weekly_complete
 
 
 def add_rolling_averages(weekly_df: pd.DataFrame, windows: list = [4]) -> pd.DataFrame:

@@ -49,7 +49,18 @@ def normalize_activities(raw_activities: List[Dict]) -> pd.DataFrame:
     # Add computed time columns
     df["year"] = df["datetime"].dt.year
     df["iso_week"] = df["datetime"].dt.isocalendar().week
-    df["year_week"] = df["datetime"].dt.strftime("%Y-W%W")
+
+    # Calculate week start (Monday) for each activity
+    df["week_start"] = df["datetime"] - pd.to_timedelta(df["datetime"].dt.dayofweek, unit='D')
+    df["week_end"] = df["week_start"] + pd.Timedelta(days=6)
+
+    # Create readable week label with dates: "2024-W01 (Jan 1 - Jan 7)"
+    df["year_week"] = (
+        df["datetime"].dt.strftime("%Y-W%V") + " (" +
+        df["week_start"].dt.strftime("%b %d") + " - " +
+        df["week_end"].dt.strftime("%b %d") + ")"
+    )
+
     df["month"] = df["datetime"].dt.strftime("%Y-%m")
 
     # Sort by datetime descending

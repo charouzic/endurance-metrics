@@ -43,12 +43,14 @@ yearly_with_change = calculate_yoy_change(yearly_df)
 # Format for display
 display_df = yearly_with_change[[
     "year", "total_distance_km", "total_distance_km_yoy_change",
+    "total_duration_min", "total_duration_min_yoy_change",
     "total_elevation_m", "total_elevation_m_yoy_change",
     "activity_count", "activity_count_yoy_change"
 ]].copy()
 
 display_df.columns = [
     "Year", "Distance (km)", "Distance YoY %",
+    "Duration (min)", "Duration YoY %",
     "Elevation (m)", "Elevation YoY %",
     "Activities", "Activities YoY %"
 ]
@@ -56,6 +58,17 @@ display_df.columns = [
 # Format numbers
 display_df["Distance (km)"] = display_df["Distance (km)"].round(1)
 display_df["Distance YoY %"] = display_df["Distance YoY %"].round(1)
+
+# Convert duration to hours and minutes format
+def format_duration_hm(minutes):
+    hours = int(minutes // 60)
+    mins = int(minutes % 60)
+    return f"{hours}h {mins}m"
+
+display_df["Duration (min)"] = display_df["Duration (min)"].apply(format_duration_hm)
+display_df = display_df.rename(columns={"Duration (min)": "Duration"})
+
+display_df["Duration YoY %"] = display_df["Duration YoY %"].round(1)
 display_df["Elevation (m)"] = display_df["Elevation (m)"].round(0)
 display_df["Elevation YoY %"] = display_df["Elevation YoY %"].round(1)
 display_df["Activities YoY %"] = display_df["Activities YoY %"].round(1)
@@ -64,8 +77,8 @@ st.dataframe(display_df, width='stretch', hide_index=True)
 
 st.divider()
 
-# Yearly distance chart
-col1, col2 = st.columns(2)
+# Yearly charts
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.subheader("Yearly Distance")
@@ -83,6 +96,23 @@ with col1:
     st.plotly_chart(fig_distance, width='stretch')
 
 with col2:
+    st.subheader("Yearly Duration")
+    fig_duration = go.Figure()
+    # Convert minutes to hours for better readability
+    fig_duration.add_trace(go.Bar(
+        x=yearly_df["year"],
+        y=yearly_df["total_duration_min"] / 60,  # Convert to hours
+        marker_color="orange",
+        hovertemplate='%{y:.1f} hours<extra></extra>'
+    ))
+    fig_duration.update_layout(
+        xaxis_title="Year",
+        yaxis_title="Duration (hours)",
+        height=400
+    )
+    st.plotly_chart(fig_duration, width='stretch')
+
+with col3:
     st.subheader("Yearly Elevation")
     fig_elevation = go.Figure()
     fig_elevation.add_trace(go.Bar(
@@ -123,7 +153,7 @@ st.subheader("Year-over-Year Insights")
 if len(yearly_with_change) > 1:
     latest_year = yearly_with_change.iloc[-1]
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         yoy_distance = latest_year["total_distance_km_yoy_change"]
@@ -134,6 +164,14 @@ if len(yearly_with_change) > 1:
         )
 
     with col2:
+        yoy_duration = latest_year["total_duration_min_yoy_change"]
+        st.metric(
+            "Duration Change",
+            f"{yoy_duration:+.1f}%",
+            delta=f"vs {int(latest_year['year'])-1}"
+        )
+
+    with col3:
         yoy_elevation = latest_year["total_elevation_m_yoy_change"]
         st.metric(
             "Elevation Change",
@@ -141,7 +179,7 @@ if len(yearly_with_change) > 1:
             delta=f"vs {int(latest_year['year'])-1}"
         )
 
-    with col3:
+    with col4:
         yoy_activities = latest_year["activity_count_yoy_change"]
         st.metric(
             "Activity Count Change",

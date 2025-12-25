@@ -90,7 +90,8 @@ fig_distance.update_layout(
     xaxis_title="Week",
     yaxis_title="Distance (km)",
     hovermode="x unified",
-    height=400
+    height=400,
+    xaxis=dict(tickangle=-45)
 )
 
 st.plotly_chart(fig_distance, width='stretch')
@@ -111,7 +112,8 @@ fig_elevation.update_layout(
     xaxis_title="Week",
     yaxis_title="Elevation (m)",
     hovermode="x unified",
-    height=400
+    height=400,
+    xaxis=dict(tickangle=-45)
 )
 
 st.plotly_chart(fig_elevation, width='stretch')
@@ -123,16 +125,18 @@ fig_duration = go.Figure()
 
 fig_duration.add_trace(go.Bar(
     x=weekly_df["year_week"],
-    y=weekly_df["total_duration_min"],
+    y=weekly_df["total_duration_min"] / 60,  # Convert to hours
     name="Weekly Duration",
-    marker_color="orange"
+    marker_color="orange",
+    hovertemplate='%{y:.1f} hours<extra></extra>'
 ))
 
 fig_duration.update_layout(
     xaxis_title="Week",
-    yaxis_title="Duration (minutes)",
+    yaxis_title="Duration (hours)",
     hovermode="x unified",
-    height=400
+    height=400,
+    xaxis=dict(tickangle=-45)
 )
 
 st.plotly_chart(fig_duration, width='stretch')

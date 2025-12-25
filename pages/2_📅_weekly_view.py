@@ -63,7 +63,8 @@ if stack_by_sport:
         xaxis_title="Week",
         yaxis_title="Distance (km)",
         hovermode="x unified",
-        height=400
+        height=400,
+        xaxis=dict(tickangle=-45)  # Rotate labels for better readability
     )
 else:
     # Simple weekly totals
@@ -80,7 +81,8 @@ else:
         xaxis_title="Week",
         yaxis_title="Distance (km)",
         hovermode="x unified",
-        height=400
+        height=400,
+        xaxis=dict(tickangle=-45)  # Rotate labels for better readability
     )
 
 st.plotly_chart(fig_distance, width='stretch')
@@ -92,16 +94,18 @@ fig_duration = go.Figure()
 
 fig_duration.add_trace(go.Bar(
     x=weekly_df["year_week"],
-    y=weekly_df["total_duration_min"],
+    y=weekly_df["total_duration_min"] / 60,  # Convert to hours
     marker_color="orange",
-    name="Weekly Duration"
+    name="Weekly Duration",
+    hovertemplate='%{y:.1f} hours<extra></extra>'
 ))
 
 fig_duration.update_layout(
     xaxis_title="Week",
-    yaxis_title="Duration (minutes)",
+    yaxis_title="Duration (hours)",
     hovermode="x unified",
-    height=400
+    height=400,
+    xaxis=dict(tickangle=-45)  # Rotate labels for better readability
 )
 
 st.plotly_chart(fig_duration, width='stretch')
@@ -122,7 +126,8 @@ fig_elevation.update_layout(
     xaxis_title="Week",
     yaxis_title="Elevation (m)",
     hovermode="x unified",
-    height=400
+    height=400,
+    xaxis=dict(tickangle=-45)  # Rotate labels for better readability
 )
 
 st.plotly_chart(fig_elevation, width='stretch')
@@ -137,12 +142,19 @@ weekly_df = calculate_weekly_stats(df_filtered)
 display_df = weekly_df[["year_week", "total_distance_km", "total_elevation_m",
                         "total_duration_min", "activity_count"]].copy()
 
-display_df.columns = ["Week", "Distance (km)", "Elevation (m)", "Duration (min)", "Activities"]
+display_df.columns = ["Week", "Distance (km)", "Elevation (m)", "Duration", "Activities"]
 
 # Format numbers
 display_df["Distance (km)"] = display_df["Distance (km)"].round(1)
 display_df["Elevation (m)"] = display_df["Elevation (m)"].round(0)
-display_df["Duration (min)"] = display_df["Duration (min)"].round(0)
+
+# Convert duration to hours and minutes format
+def format_duration_hm(minutes):
+    hours = int(minutes // 60)
+    mins = int(minutes % 60)
+    return f"{hours}h {mins}m"
+
+display_df["Duration"] = display_df["Duration"].apply(format_duration_hm)
 
 st.dataframe(display_df, width='stretch', hide_index=True)
 
@@ -150,16 +162,20 @@ st.dataframe(display_df, width='stretch', hide_index=True)
 st.divider()
 st.subheader("Summary")
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     avg_weekly_distance = weekly_df["total_distance_km"].mean()
     st.metric("Avg Weekly Distance", f"{avg_weekly_distance:.1f} km")
 
 with col2:
+    avg_weekly_duration = weekly_df["total_duration_min"].mean()
+    st.metric("Avg Weekly Duration", f"{avg_weekly_duration / 60:.1f}h")
+
+with col3:
     avg_weekly_elevation = weekly_df["total_elevation_m"].mean()
     st.metric("Avg Weekly Elevation", f"{avg_weekly_elevation:.0f} m")
 
-with col3:
+with col4:
     avg_weekly_activities = weekly_df["activity_count"].mean()
     st.metric("Avg Activities/Week", f"{avg_weekly_activities:.1f}")
